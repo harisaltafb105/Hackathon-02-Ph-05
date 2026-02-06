@@ -1,0 +1,139 @@
+# Docker ignore file for MCP Server
+# Prevents unnecessary files from being copied into the Docker image
+# This reduces image size and improves build performance
+
+# ============================================================
+# Git and Version Control
+# ============================================================
+.git/
+.gitignore
+.gitattributes
+.github/
+
+# ============================================================
+# Python
+# ============================================================
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.virtualenv/
+
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+wheels/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pytype/
+
+# ============================================================
+# IDE and Editor Files
+# ============================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# ============================================================
+# Project Specific
+# ============================================================
+# Frontend (not needed for MCP server)
+frontend/
+node_modules/
+
+# Deployment files (not needed inside container)
+deploy/
+helm/
+k8s/
+kubernetes/
+
+# Documentation
+*.md
+!README.md
+docs/
+history/
+specs/
+
+# Configuration templates and examples
+*.example
+.env.example
+docker-compose*.yml
+Dockerfile*
+!Dockerfile
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+.cache/
+
+# CI/CD
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+.jenkins/
+
+# Claude/AI specific
+.claude/
+.specify/
+
+# Secrets (should never be in image)
+.env
+.env.local
+.env.*.local
+secrets/
+*.key
+*.pem
+*.crt
+*.cert
+
+# Test files (optional: remove if tests are needed)
+test_*.py
+*_test.py
+tests/
+backend/tests/
+
+# Scripts not needed in runtime
+scripts/
+*.sh
+!entrypoint.sh
+
+# Large binaries or data files
+*.zip
+*.tar.gz
+*.tgz
+*.rar

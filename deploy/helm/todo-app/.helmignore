@@ -1,0 +1,36 @@
+# Patterns to ignore when building packages.
+.DS_Store
+Thumbs.db
+
+# Common VCS dirs
+.git/
+.gitignore
+.bzr/
+.bzrignore
+.hg/
+.hgignore
+.svn/
+
+# Common backup files
+*.swp
+*.bak
+*.tmp
+*.orig
+*~
+
+# Various IDEs
+.project
+.idea/
+*.tmproj
+.vscode/
+
+# Helm specific
+*.tgz
+OWNERS
+# values files that contain secrets
+values-secrets.yaml
+*-secrets.yaml
+
+# Documentation
+*.md
+LICENSE

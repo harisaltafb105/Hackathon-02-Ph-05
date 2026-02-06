@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "todo-app.configMapName" . }}
+  labels:
+    {{- include "todo-app.labels" . | nindent 4 }}
+data:
+  # Frontend environment
+  NODE_ENV: {{ .Values.frontend.env.NODE_ENV | quote }}
+  NEXT_PUBLIC_API_URL: {{ .Values.frontend.env.NEXT_PUBLIC_API_URL | quote }}
+  # Backend environment
+  PYTHONUNBUFFERED: {{ .Values.backend.env.PYTHONUNBUFFERED | quote }}
+  BETTER_AUTH_URL: {{ .Values.backend.env.BETTER_AUTH_URL | quote }}
+  # MCP Server environment
+  BACKEND_URL: {{ .Values.mcpServer.env.BACKEND_URL | quote }}
+  # AI Agent environment
+  MCP_SERVER_URL: {{ .Values.aiAgent.env.MCP_SERVER_URL | quote }}
+  OPENAI_MODEL: {{ .Values.aiAgent.env.OPENAI_MODEL | quote }}

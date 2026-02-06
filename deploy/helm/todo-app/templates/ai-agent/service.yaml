@@ -1,0 +1,17 @@
+{{- if .Values.aiAgent.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "todo-app.fullname" . }}-ai-agent-svc
+  labels:
+    {{- include "todo-app.aiAgent.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.aiAgent.service.type }}
+  ports:
+    - port: {{ .Values.aiAgent.service.port }}
+      targetPort: {{ .Values.aiAgent.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "todo-app.aiAgent.selectorLabels" . | nindent 4 }}
+{{- end }}

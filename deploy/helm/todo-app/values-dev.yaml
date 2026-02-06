@@ -1,0 +1,65 @@
+# Development values for todo-app
+# Use this file for local development overrides
+# Usage: helm install todo-app ./deploy/helm/todo-app -f ./deploy/helm/todo-app/values-dev.yaml --set secrets.databaseUrl=... --set secrets.betterAuthSecret=... --set secrets.openaiApiKey=...
+
+# Override global settings for development
+global:
+  imagePullPolicy: IfNotPresent
+  labels:
+    environment: development
+
+# Frontend development settings
+frontend:
+  replicaCount: 1
+  image:
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+# Backend development settings
+backend:
+  replicaCount: 1
+  image:
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+# MCP Server development settings
+mcpServer:
+  replicaCount: 1
+  image:
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+# AI Agent development settings
+aiAgent:
+  replicaCount: 1
+  image:
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi

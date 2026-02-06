@@ -1,0 +1,448 @@
+openapi: 3.0.3
+info:
+  title: Todo API
+  description: |
+    RESTful API for todo task management with JWT authentication and strict user isolation.
+    All endpoints require Bearer token authentication via Authorization header.
+    Users can only access their own tasks (enforced via user_id validation).
+  version: 1.0.0
+  contact:
+    name: API Support
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8000
+    description: Development server
+  - url: https://api.example.com
+    description: Production server (TBD)
+
+tags:
+  - name: tasks
+    description: Task CRUD operations
+
+security:
+  - BearerAuth: []
+
+paths:
+  /api/{user_id}/tasks:
+    get:
+      summary: List all tasks for authenticated user
+      description: |
+        Returns all tasks belonging to the authenticated user.
+        User ID in path must match user ID from JWT token.
+      tags:
+        - tasks
+      operationId: listTasks
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+      responses:
+        '200':
+          description: List of tasks retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+              example:
+                - id: "550e8400-e29b-41d4-a716-446655440000"
+                  title: "Complete project documentation"
+                  description: "Write README and API docs"
+                  completed: false
+                  created_at: "2026-01-07T10:00:00Z"
+                  updated_at: "2026-01-07T10:00:00Z"
+                  user_id: "user_123"
+                - id: "550e8400-e29b-41d4-a716-446655440001"
+                  title: "Review pull requests"
+                  description: null
+                  completed: true
+                  created_at: "2026-01-06T14:30:00Z"
+                  updated_at: "2026-01-07T09:15:00Z"
+                  user_id: "user_123"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      summary: Create a new task
+      description: |
+        Creates a new task for the authenticated user.
+        Task ID is auto-generated. Completed status defaults to false.
+      tags:
+        - tasks
+      operationId: createTask
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCreate'
+            example:
+              title: "Implement authentication"
+              description: "Add JWT verification to backend"
+      responses:
+        '201':
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+              example:
+                id: "550e8400-e29b-41d4-a716-446655440002"
+                title: "Implement authentication"
+                description: "Add JWT verification to backend"
+                completed: false
+                created_at: "2026-01-07T11:00:00Z"
+                updated_at: "2026-01-07T11:00:00Z"
+                user_id: "user_123"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/{user_id}/tasks/{task_id}:
+    get:
+      summary: Get a specific task
+      description: |
+        Retrieves a single task by ID.
+        User must own the task (user_id verification enforced).
+      tags:
+        - tasks
+      operationId: getTask
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+        - $ref: '#/components/parameters/TaskIdPath'
+      responses:
+        '200':
+          description: Task retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      summary: Update entire task
+      description: |
+        Updates all fields of a task (full replacement).
+        User must own the task.
+      tags:
+        - tasks
+      operationId: updateTask
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+        - $ref: '#/components/parameters/TaskIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskUpdate'
+            example:
+              title: "Implement authentication (updated)"
+              description: "Add JWT verification and user isolation"
+              completed: true
+      responses:
+        '200':
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    patch:
+      summary: Partially update task
+      description: |
+        Updates one or more fields of a task.
+        Omitted fields remain unchanged.
+        User must own the task.
+      tags:
+        - tasks
+      operationId: patchTask
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+        - $ref: '#/components/parameters/TaskIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskPatch'
+            example:
+              completed: true
+      responses:
+        '200':
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    delete:
+      summary: Delete a task
+      description: |
+        Permanently deletes a task.
+        User must own the task.
+      tags:
+        - tasks
+      operationId: deleteTask
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+        - $ref: '#/components/parameters/TaskIdPath'
+      responses:
+        '204':
+          description: Task deleted successfully (no content)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token issued by Better Auth.
+        Include in Authorization header as: Bearer <token>
+
+  parameters:
+    UserIdPath:
+      name: user_id
+      in: path
+      required: true
+      description: User ID (must match authenticated user from JWT token)
+      schema:
+        type: string
+      example: "user_123"
+
+    TaskIdPath:
+      name: task_id
+      in: path
+      required: true
+      description: Task UUID
+      schema:
+        type: string
+        format: uuid
+      example: "550e8400-e29b-41d4-a716-446655440000"
+
+  schemas:
+    Task:
+      type: object
+      description: Task model with all fields
+      required:
+        - id
+        - title
+        - completed
+        - created_at
+        - updated_at
+        - user_id
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Task unique identifier
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: Task title
+          example: "Complete project documentation"
+        description:
+          type: string
+          nullable: true
+          maxLength: 5000
+          description: Task description (optional)
+          example: "Write README and API docs"
+        completed:
+          type: boolean
+          description: Task completion status
+          example: false
+        created_at:
+          type: string
+          format: date-time
+          description: Task creation timestamp (ISO 8601)
+          example: "2026-01-07T10:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Task last update timestamp (ISO 8601)
+          example: "2026-01-07T10:00:00Z"
+        user_id:
+          type: string
+          description: Owner user ID
+          example: "user_123"
+
+    TaskCreate:
+      type: object
+      description: Task creation request
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: Task title (required)
+          example: "Implement authentication"
+        description:
+          type: string
+          nullable: true
+          maxLength: 5000
+          description: Task description (optional)
+          example: "Add JWT verification to backend"
+
+    TaskUpdate:
+      type: object
+      description: Task full update request (PUT)
+      required:
+        - title
+        - completed
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: Task title (required)
+          example: "Implement authentication (updated)"
+        description:
+          type: string
+          nullable: true
+          maxLength: 5000
+          description: Task description (optional)
+          example: "Add JWT verification and user isolation"
+        completed:
+          type: boolean
+          description: Task completion status (required)
+          example: true
+
+    TaskPatch:
+      type: object
+      description: Task partial update request (PATCH)
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: Task title (optional)
+          example: "Updated title"
+        description:
+          type: string
+          nullable: true
+          maxLength: 5000
+          description: Task description (optional)
+          example: "Updated description"
+        completed:
+          type: boolean
+          description: Task completion status (optional)
+          example: true
+
+    ErrorResponse:
+      type: object
+      description: Standard error response format (FR-013)
+      required:
+        - error
+        - detail
+      properties:
+        error:
+          type: string
+          description: Error category
+          example: "Validation Error"
+        detail:
+          type: string
+          description: Specific error message
+          example: "title: field required"
+
+  responses:
+    BadRequest:
+      description: Bad Request (malformed JSON)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Bad Request"
+            detail: "Invalid JSON payload"
+
+    Unauthorized:
+      description: Unauthorized (missing or invalid JWT token)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Unauthorized"
+            detail: "Invalid or expired token"
+
+    Forbidden:
+      description: Forbidden (user_id mismatch or accessing other user's resource)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Forbidden"
+            detail: "Cannot access other users' resources"
+
+    NotFound:
+      description: Not Found (task does not exist)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Not Found"
+            detail: "Task not found"
+
+    ValidationError:
+      description: Validation Error (invalid request payload)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Validation Error"
+            detail: "title: ensure this value has at least 1 characters"
+
+    ServiceUnavailable:
+      description: Service Unavailable (database connection error)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Service Unavailable"
+            detail: "Database temporarily unavailable"

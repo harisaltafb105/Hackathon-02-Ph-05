@@ -1,0 +1,50 @@
+/**
+ * Authentication Form Validation Schemas
+ *
+ * Zod schemas for validating login and registration forms.
+ * Provides type-safe validation with user-friendly error messages.
+ *
+ * Feature: 002-frontend-auth
+ * Date: 2026-01-07
+ */
+
+import { z } from 'zod'
+
+/**
+ * Login Form Validation Schema
+ *
+ * Validates email and password fields for login form.
+ */
+export const loginSchema = z.object({
+  email: z
+    .string()
+    .min(1, 'Email is required')
+    .email('Please enter a valid email address'),
+  password: z
+    .string()
+    .min(1, 'Password is required')
+    .min(8, 'Password must be at least 8 characters'),
+})
+
+/**
+ * Registration Form Validation Schema
+ *
+ * Validates email, password, and confirmPassword fields for registration form.
+ * Includes password match validation via refine.
+ */
+export const registerSchema = z
+  .object({
+    email: z
+      .string()
+      .min(1, 'Email is required')
+      .email('Please enter a valid email address'),
+    password: z
+      .string()
+      .min(1, 'Password is required')
+      .min(8, 'Password must be at least 8 characters'),
+    confirmPassword: z.string().min(1, 'Please confirm your password'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ['confirmPassword'],
+  })
