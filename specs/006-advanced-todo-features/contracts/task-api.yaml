@@ -1,0 +1,258 @@
+# Task API Contract - Extended for 006-advanced-todo-features
+# Date: 2026-02-07
+
+openapi: "3.0.3"
+info:
+  title: Task API (Extended)
+  version: "2.0.0"
+  description: >
+    Extended task endpoints with priority, tags, search, filter, sort,
+    pagination, due dates, and recurring tasks.
+
+paths:
+  /api/{user_id}/tasks:
+    get:
+      operationId: listTasks
+      summary: List tasks with search, filter, sort, and pagination
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: q
+          in: query
+          description: "Keyword search (ILIKE on title + description)"
+          schema: { type: string }
+        - name: completed
+          in: query
+          description: "Filter by completion status"
+          schema: { type: boolean }
+        - name: priority
+          in: query
+          description: "Filter by priority (comma-separated: high,urgent)"
+          schema: { type: string }
+        - name: tag
+          in: query
+          description: "Filter by tag (comma-separated: work,meeting)"
+          schema: { type: string }
+        - name: overdue
+          in: query
+          description: "Filter overdue tasks (incomplete + due_date < today)"
+          schema: { type: boolean }
+        - name: due_before
+          in: query
+          description: "Tasks due before this date (YYYY-MM-DD)"
+          schema: { type: string, format: date }
+        - name: due_after
+          in: query
+          description: "Tasks due after this date (YYYY-MM-DD)"
+          schema: { type: string, format: date }
+        - name: sort_by
+          in: query
+          description: "Sort field"
+          schema:
+            type: string
+            enum: [priority, due_date, created_at, updated_at, title]
+            default: created_at
+        - name: sort_order
+          in: query
+          description: "Sort direction"
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+        - name: limit
+          in: query
+          description: "Page size (default 50, max 100)"
+          schema: { type: integer, default: 50, maximum: 100 }
+        - name: offset
+          in: query
+          description: "Page offset (default 0)"
+          schema: { type: integer, default: 0 }
+      responses:
+        "200":
+          description: Paginated task list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedTaskResponse"
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden }
+
+    post:
+      operationId: createTask
+      summary: Create a new task
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskCreate"
+      responses:
+        "201":
+          description: Task created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskResponse"
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden }
+        "422": { description: Validation error }
+
+  /api/{user_id}/tasks/{task_id}:
+    get:
+      operationId: getTask
+      summary: Get a specific task
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: task_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskResponse"
+        "404": { description: Not found }
+
+    put:
+      operationId: updateTaskFull
+      summary: Full task update
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskUpdate"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskResponse"
+
+    patch:
+      operationId: updateTaskPartial
+      summary: Partial task update (also triggers recurrence on complete)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskPatch"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskResponse"
+
+    delete:
+      operationId: deleteTask
+      summary: Delete a task (cascades to reminders)
+      responses:
+        "204": { description: Deleted }
+        "404": { description: Not found }
+
+components:
+  schemas:
+    TaskCreate:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 500 }
+        description: { type: string, maxLength: 5000 }
+        priority:
+          type: string
+          enum: [none, low, medium, high, urgent]
+          default: none
+        tags:
+          type: array
+          items: { type: string, maxLength: 50 }
+          maxItems: 20
+          default: []
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        recurrence_rule:
+          type: string
+          maxLength: 200
+          nullable: true
+
+    TaskUpdate:
+      type: object
+      required: [title, completed]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 500 }
+        description: { type: string, maxLength: 5000 }
+        completed: { type: boolean }
+        priority:
+          type: string
+          enum: [none, low, medium, high, urgent]
+        tags:
+          type: array
+          items: { type: string }
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        recurrence_rule:
+          type: string
+          nullable: true
+
+    TaskPatch:
+      type: object
+      properties:
+        title: { type: string, minLength: 1, maxLength: 500 }
+        description: { type: string, maxLength: 5000 }
+        completed: { type: boolean }
+        priority:
+          type: string
+          enum: [none, low, medium, high, urgent]
+        tags:
+          type: array
+          items: { type: string }
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        recurrence_rule:
+          type: string
+          nullable: true
+
+    TaskResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string, nullable: true }
+        completed: { type: boolean }
+        priority: { type: string }
+        tags: { type: array, items: { type: string } }
+        due_date: { type: string, format: date, nullable: true }
+        is_overdue: { type: boolean }
+        recurrence_rule: { type: string, nullable: true }
+        recurrence_group_id: { type: string, format: uuid, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        user_id: { type: string }
+
+    PaginatedTaskResponse:
+      type: object
+      properties:
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskResponse"
+        total: { type: integer }
+        limit: { type: integer }
+        offset: { type: integer }

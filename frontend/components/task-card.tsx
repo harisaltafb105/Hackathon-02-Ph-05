@@ -1,10 +1,11 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Check, Pencil, Trash2 } from 'lucide-react'
+import { Check, Pencil, Trash2, RefreshCw, Calendar } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
+import { PriorityBadge } from '@/components/priority-badge'
 import type { Task } from '@/types/task'
 
 interface TaskCardProps {
@@ -54,15 +55,21 @@ export function TaskCard({ task, onToggleComplete, onEdit, onDelete }: TaskCardP
 
             {/* Task content */}
             <div className="flex-1 min-w-0">
-              <h3
-                className={`font-medium text-base ${
-                  task.completed
-                    ? 'line-through text-muted-foreground'
-                    : 'text-foreground'
-                }`}
-              >
-                {task.title}
-              </h3>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3
+                  className={`font-medium text-base ${
+                    task.completed
+                      ? 'line-through text-muted-foreground'
+                      : 'text-foreground'
+                  }`}
+                >
+                  {task.title}
+                </h3>
+                <PriorityBadge priority={task.priority} />
+                {task.recurrenceRule && (
+                  <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" aria-label="Recurring task" />
+                )}
+              </div>
               {task.description && (
                 <p
                   className={`mt-1 text-sm ${
@@ -74,13 +81,41 @@ export function TaskCard({ task, onToggleComplete, onEdit, onDelete }: TaskCardP
                   {task.description}
                 </p>
               )}
-              <p className="mt-2 text-xs text-muted-foreground">
-                {new Date(task.createdAt).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                })}
-              </p>
+              {/* Tags */}
+              {task.tags && task.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {task.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent text-accent-foreground"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                <span>
+                  {new Date(task.createdAt).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                </span>
+                {task.dueDate && (
+                  <span
+                    className={`flex items-center gap-1 ${
+                      task.isOverdue
+                        ? 'text-red-600 font-medium'
+                        : 'text-muted-foreground'
+                    }`}
+                  >
+                    <Calendar className="h-3 w-3" />
+                    Due {task.dueDate}
+                    {task.isOverdue && ' (overdue)'}
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Action buttons (visible on hover) */}

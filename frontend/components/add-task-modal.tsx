@@ -24,8 +24,8 @@ export function AddTaskModal() {
   const handleSubmit = async (data: TaskFormData) => {
     setIsLoading(true)
 
-    // Add task via API
-    await addTask(data.title, data.description)
+    // Add task via API (Phase V: pass full TaskFormData)
+    await addTask(data)
 
     setIsLoading(false)
 

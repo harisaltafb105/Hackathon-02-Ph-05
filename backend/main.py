@@ -150,8 +150,9 @@ async def health_check():
 
 
 # Import and include routers
-from backend.routers import tasks, auth, chat
+from backend.routers import tasks, auth, chat, reminders
 
 app.include_router(auth.router)
 app.include_router(tasks.router)
+app.include_router(reminders.router)  # Phase V: Reminders
 app.include_router(chat.router)  # Phase III: AI Chatbot

@@ -1,18 +1,38 @@
 """
 Pydantic schemas for request/response validation.
 Defines data transfer objects for API endpoints.
+
+Phase V: Extended with priority, tags, due_date, recurrence, reminders, pagination.
 """
 
-from datetime import datetime
+import re
+from datetime import date, datetime
 from typing import Optional
 from uuid import UUID
-from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from pydantic import BaseModel, Field, ConfigDict, EmailStr, field_validator, model_validator
+
+
+# Tag validation regex: lowercase alphanumeric, hyphens, underscores
+TAG_PATTERN = re.compile(r"^[a-z0-9_-]+$")
+
+
+def normalize_tags(tags: list[str]) -> list[str]:
+    """Normalize tags: lowercase, strip whitespace, remove invalid characters."""
+    normalized = []
+    for tag in tags:
+        tag = tag.strip().lower()
+        # Strip invalid characters
+        tag = re.sub(r"[^a-z0-9_-]", "", tag)
+        if tag and len(tag) <= 50:
+            normalized.append(tag)
+    return normalized[:20]  # Max 20 tags
 
 
 class TaskResponse(BaseModel):
     """
     Task response schema.
     Used for GET, POST, PUT, PATCH responses.
+    Phase V: Extended with priority, tags, due_date, is_overdue, recurrence fields.
     """
     model_config = ConfigDict(from_attributes=True)
 
@@ -20,15 +40,31 @@ class TaskResponse(BaseModel):
     title: str
     description: Optional[str]
     completed: bool
+    priority: str = "none"
+    tags: list[str] = []
+    due_date: Optional[date] = None
+    is_overdue: bool = False
+    recurrence_rule: Optional[str] = None
+    recurrence_group_id: Optional[UUID] = None
     created_at: datetime
     updated_at: datetime
     user_id: str
+
+    @model_validator(mode="after")
+    def compute_overdue(self) -> "TaskResponse":
+        """Compute is_overdue: true when due_date < today AND not completed."""
+        if self.due_date and not self.completed and self.due_date < date.today():
+            self.is_overdue = True
+        else:
+            self.is_overdue = False
+        return self
 
 
 class TaskCreate(BaseModel):
     """
     Task creation schema.
     Used for POST /api/{user_id}/tasks
+    Phase V: Extended with priority, tags, due_date, recurrence_rule.
     """
     title: str = Field(
         min_length=1,
@@ -42,12 +78,47 @@ class TaskCreate(BaseModel):
         description="Task description (optional, max 5000 characters)"
     )
 
+    priority: str = Field(
+        default="none",
+        description="Task priority (none, low, medium, high, urgent)"
+    )
+
+    tags: list[str] = Field(
+        default_factory=list,
+        description="Task tags (max 20 tags, each max 50 chars)"
+    )
+
+    due_date: Optional[date] = Field(
+        default=None,
+        description="Task due date (YYYY-MM-DD)"
+    )
+
+    recurrence_rule: Optional[str] = Field(
+        default=None,
+        max_length=200,
+        description="Recurrence rule (e.g., FREQ=DAILY)"
+    )
+
+    @field_validator("priority")
+    @classmethod
+    def validate_priority(cls, v: str) -> str:
+        valid = {"none", "low", "medium", "high", "urgent"}
+        if v not in valid:
+            raise ValueError(f"Priority must be one of: {', '.join(sorted(valid))}")
+        return v
+
+    @field_validator("tags")
+    @classmethod
+    def validate_and_normalize_tags(cls, v: list[str]) -> list[str]:
+        return normalize_tags(v)
+
 
 class TaskUpdate(BaseModel):
     """
     Task full update schema.
     Used for PUT /api/{user_id}/tasks/{task_id}
     All fields are required for PUT (full replacement).
+    Phase V: Extended with priority, tags, due_date, recurrence_rule.
     """
     title: str = Field(
         min_length=1,
@@ -65,12 +136,47 @@ class TaskUpdate(BaseModel):
         description="Task completion status (required)"
     )
 
+    priority: str = Field(
+        default="none",
+        description="Task priority (none, low, medium, high, urgent)"
+    )
+
+    tags: list[str] = Field(
+        default_factory=list,
+        description="Task tags"
+    )
+
+    due_date: Optional[date] = Field(
+        default=None,
+        description="Task due date (YYYY-MM-DD)"
+    )
+
+    recurrence_rule: Optional[str] = Field(
+        default=None,
+        max_length=200,
+        description="Recurrence rule"
+    )
+
+    @field_validator("priority")
+    @classmethod
+    def validate_priority(cls, v: str) -> str:
+        valid = {"none", "low", "medium", "high", "urgent"}
+        if v not in valid:
+            raise ValueError(f"Priority must be one of: {', '.join(sorted(valid))}")
+        return v
+
+    @field_validator("tags")
+    @classmethod
+    def validate_and_normalize_tags(cls, v: list[str]) -> list[str]:
+        return normalize_tags(v)
+
 
 class TaskPatch(BaseModel):
     """
     Task partial update schema.
     Used for PATCH /api/{user_id}/tasks/{task_id}
     All fields are optional for PATCH (partial update).
+    Phase V: Extended with priority, tags, due_date, recurrence_rule.
     """
     title: Optional[str] = Field(
         default=None,
@@ -89,6 +195,98 @@ class TaskPatch(BaseModel):
         default=None,
         description="Task completion status (optional)"
     )
+
+    priority: Optional[str] = Field(
+        default=None,
+        description="Task priority (none, low, medium, high, urgent)"
+    )
+
+    tags: Optional[list[str]] = Field(
+        default=None,
+        description="Task tags (replaces existing tags)"
+    )
+
+    due_date: Optional[date] = Field(
+        default=None,
+        description="Task due date (YYYY-MM-DD)"
+    )
+
+    recurrence_rule: Optional[str] = Field(
+        default=None,
+        max_length=200,
+        description="Recurrence rule"
+    )
+
+    @field_validator("priority")
+    @classmethod
+    def validate_priority(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        valid = {"none", "low", "medium", "high", "urgent"}
+        if v not in valid:
+            raise ValueError(f"Priority must be one of: {', '.join(sorted(valid))}")
+        return v
+
+    @field_validator("tags")
+    @classmethod
+    def validate_and_normalize_tags(cls, v: Optional[list[str]]) -> Optional[list[str]]:
+        if v is None:
+            return v
+        return normalize_tags(v)
+
+
+# =============================================================================
+# Phase V: Pagination, Reminder, and Tag Schemas
+# =============================================================================
+
+
+class PaginatedTaskResponse(BaseModel):
+    """Paginated task list response."""
+    tasks: list[TaskResponse]
+    total: int
+    limit: int
+    offset: int
+
+
+class ReminderCreate(BaseModel):
+    """
+    Reminder creation schema.
+    Provide either trigger_at (absolute) or relative_to_due (relative).
+    """
+    trigger_at: Optional[datetime] = Field(
+        default=None,
+        description="Absolute trigger time (must be in the future)"
+    )
+
+    relative_to_due: Optional[str] = Field(
+        default=None,
+        description="Relative offset from due_date (e.g., '-1d', '-2d', '-1h')"
+    )
+
+    @model_validator(mode="after")
+    def validate_reminder(self) -> "ReminderCreate":
+        if not self.trigger_at and not self.relative_to_due:
+            raise ValueError("Either trigger_at or relative_to_due must be provided")
+        if self.trigger_at and self.relative_to_due:
+            raise ValueError("Provide only one of trigger_at or relative_to_due")
+        return self
+
+
+class ReminderResponse(BaseModel):
+    """Reminder response schema."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    task_id: UUID
+    user_id: str
+    trigger_at: datetime
+    status: str
+    created_at: datetime
+
+
+class TagListResponse(BaseModel):
+    """List of distinct tags for the user."""
+    tags: list[str]
 
 
 # Authentication Schemas

@@ -1,0 +1,122 @@
+# Reminder API Contract - 006-advanced-todo-features
+# Date: 2026-02-07
+
+openapi: "3.0.3"
+info:
+  title: Reminder API
+  version: "1.0.0"
+  description: Reminder CRUD endpoints for task reminders.
+
+paths:
+  /api/{user_id}/tasks/{task_id}/reminders:
+    get:
+      operationId: listReminders
+      summary: List reminders for a task
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: task_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: List of reminders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reminders:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ReminderResponse"
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden }
+        "404": { description: Task not found }
+
+    post:
+      operationId: createReminder
+      summary: Create a reminder for a task
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: task_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReminderCreate"
+      responses:
+        "201":
+          description: Reminder created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReminderResponse"
+        "400": { description: "Reminder time in the past or relative without due date" }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden }
+        "404": { description: Task not found }
+        "422": { description: Validation error }
+
+  /api/{user_id}/tasks/{task_id}/reminders/{reminder_id}:
+    delete:
+      operationId: deleteReminder
+      summary: Delete a reminder
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: task_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: reminder_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Deleted }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden }
+        "404": { description: Reminder not found }
+
+components:
+  schemas:
+    ReminderCreate:
+      type: object
+      description: >
+        Provide either trigger_at (absolute) or relative_to_due (relative).
+        If relative_to_due is provided, the task must have a due_date.
+      properties:
+        trigger_at:
+          type: string
+          format: date-time
+          description: "Absolute trigger time (must be in the future)"
+        relative_to_due:
+          type: string
+          description: >
+            Relative offset from task due_date. Format: "-Nd" for N days before,
+            "-Nh" for N hours before. Examples: "-1d" (1 day before), "-2d" (2 days before).
+
+    ReminderResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        task_id: { type: string, format: uuid }
+        user_id: { type: string }
+        trigger_at: { type: string, format: date-time }
+        status:
+          type: string
+          enum: [pending, triggered, cancelled]
+        created_at: { type: string, format: date-time }

@@ -1,24 +1,32 @@
 <!--
 Sync Impact Report:
-Version change: 2.0.0 → 3.0.0
+Version change: 3.0.0 → 4.0.0
 Modified principles:
-  - Development Workflow - expanded to include Phase IV
+  - None renamed; all I-XIX retained as-is
 Added sections:
-  - Principle XIV: Infrastructure-Only Phase (NON-NEGOTIABLE)
-  - Principle XV: Spec-Driven Infrastructure (NON-NEGOTIABLE)
-  - Principle XVI: Local-First Cloud-Native (NON-NEGOTIABLE)
-  - Principle XVII: Reproducible Deployment (NON-NEGOTIABLE)
-  - Principle XVIII: AI-Assisted DevOps Sovereignty (NON-NEGOTIABLE)
-  - Principle XIX: Failure Diagnosis Protocol (NON-NEGOTIABLE)
-  - Phase IV Technology Stack
-  - Phase IV Agent Roles
-  - Phase IV Success Definition
-  - Phase IV Explicit Out-of-Scope
+  - Principle XX: Event-Driven First (NON-NEGOTIABLE)
+  - Principle XXI: Dapr Abstraction Layer (NON-NEGOTIABLE)
+  - Principle XXII: Feature Event Governance (NON-NEGOTIABLE)
+  - Principle XXIII: Kafka Schema Governance (NON-NEGOTIABLE)
+  - Principle XXIV: Local-First Cloud Promotion (NON-NEGOTIABLE)
+  - Principle XXV: CI/CD Pipeline Mandate (NON-NEGOTIABLE)
+  - Principle XXVI: Observability and Reliability (NON-NEGOTIABLE)
+  - Principle XXVII: Phase V Agent Sovereignty (NON-NEGOTIABLE)
+  - Phase V Technology Stack
+  - Phase V Agent Roles
+  - Phase V Success Definition
+  - Phase V Explicit Out-of-Scope
+  - Development Workflow updated with Phase V
+  - Quality Gates updated with Phase V
+  - Deployment Architecture updated with Phase V
+  - Security Standards updated with Phase V
 Removed sections: None
 Templates requiring updates:
   ✅ plan-template.md - Constitution Check references remain valid
   ✅ spec-template.md - Requirements alignment verified
-  ✅ tasks-template.md - Task categorization includes infrastructure tasks
+  ✅ tasks-template.md - Task categorization includes event-driven
+     and infrastructure tasks
+  ✅ checklist-template.md - No structural changes needed
 Follow-up TODOs: None
 -->
 
@@ -28,128 +36,189 @@ Follow-up TODOs: None
 
 ### I. Spec-Driven Development (NON-NEGOTIABLE)
 
-All implementation MUST be driven by specifications created in the `specs/` directory. No manual coding is permitted outside of Claude Code execution following spec-driven workflows.
+All implementation MUST be driven by specifications created in the
+`specs/` directory. No manual coding is permitted outside of Claude
+Code execution following spec-driven workflows.
 
 **Rules**:
-- Every feature begins with a specification document in `specs/features/[feature-name].md`
-- Implementation follows the workflow: Write Spec → Claude Code reads spec → Claude Code implements
+- Every feature begins with a specification document in
+  `specs/features/[feature-name].md`
+- Implementation follows the workflow:
+  Write Spec → Claude Code reads spec → Claude Code implements
 - All changes reference their governing spec using `@specs/` notation
-- Specs are the single source of truth for requirements, API contracts, and data models
+- Specs are the single source of truth for requirements, API
+  contracts, and data models
 - Claude Code MUST read relevant specs before any implementation work
 - Specs are append-only; updates MUST be done via new spec revisions
 - No retroactive spec rewriting
 
-**Rationale**: Eliminates ambiguity, ensures traceability from requirement to implementation, enables autonomous agent execution with clear boundaries.
+**Rationale**: Eliminates ambiguity, ensures traceability from
+requirement to implementation, enables autonomous agent execution
+with clear boundaries.
 
 ### II. Multi-Tenant User Isolation (NON-NEGOTIABLE)
 
-Every API endpoint and database query MUST enforce strict user isolation. No user can access or modify another user's data under any circumstances.
+Every API endpoint and database query MUST enforce strict user
+isolation. No user can access or modify another user's data under
+any circumstances.
 
 **Rules**:
 - All API endpoints extract user ID from verified JWT tokens
 - All database queries include user_id filtering in WHERE clauses
-- User ID comes exclusively from JWT claims, never from request parameters
+- User ID comes exclusively from JWT claims, never from request
+  parameters
 - 401 Unauthorized returned for missing/invalid tokens
-- 403 Forbidden returned when attempting to access other users' resources
-- Database models include user_id foreign key with NOT NULL constraint
+- 403 Forbidden returned when attempting to access other users'
+  resources
+- Database models include user_id foreign key with NOT NULL
+  constraint
 - Integration tests MUST verify cross-user isolation
 - User identity MUST never be inferred from chat text (Phase III)
+- Event payloads MUST include userId for tenant-scoped processing
+  (Phase V)
 
-**Rationale**: Security-first design prevents data leakage, satisfies multi-user requirements, provides defense-in-depth through stateless authentication.
+**Rationale**: Security-first design prevents data leakage,
+satisfies multi-user requirements, provides defense-in-depth
+through stateless authentication.
 
 ### III. JWT Authentication Bridge (NON-NEGOTIABLE)
 
-Authentication uses Better Auth on frontend issuing JWTs, verified by FastAPI backend using shared secret. No session storage, no shared authentication database.
+Authentication uses Better Auth on frontend issuing JWTs, verified
+by FastAPI backend using shared secret. No session storage, no
+shared authentication database.
 
 **Rules**:
 - Better Auth frontend generates JWT tokens on successful login
 - All API requests include `Authorization: Bearer <token>` header
-- Backend verifies JWT signature using `BETTER_AUTH_SECRET` environment variable
-- Backend extracts user ID from JWT payload (`sub` or `userId` claim)
-- Tokens are stateless with embedded expiry (no server-side revocation for MVP)
+- Backend verifies JWT signature using `BETTER_AUTH_SECRET`
+  environment variable
+- Backend extracts user ID from JWT payload (`sub` or `userId`
+  claim)
+- Tokens are stateless with embedded expiry (no server-side
+  revocation for MVP)
 - Failed verification returns 401 with descriptive error message
-- Environment variable `BETTER_AUTH_SECRET` MUST match between frontend and backend
-- AI receives user_id only from backend context, never from user input (Phase III)
+- Environment variable `BETTER_AUTH_SECRET` MUST match between
+  frontend and backend
+- AI receives user_id only from backend context, never from user
+  input (Phase III)
 
-**Rationale**: Stateless authentication enables horizontal scaling, eliminates database round-trips for auth, simplifies frontend-backend contract, standard JWT ecosystem compatibility.
+**Rationale**: Stateless authentication enables horizontal scaling,
+eliminates database round-trips for auth, simplifies
+frontend-backend contract, standard JWT ecosystem compatibility.
 
 ### IV. Monorepo with Clear Boundaries
 
-Project structure separates frontend, backend, and shared specifications with explicit interface contracts.
+Project structure separates frontend, backend, and shared
+specifications with explicit interface contracts.
 
 **Rules**:
 - Root `CLAUDE.md` provides high-level project guidance
-- `specs/` directory contains all feature specifications, API contracts, database schemas
-- `frontend/` contains Next.js application with own `CLAUDE.md` for frontend-specific guidance
-- `backend/` contains FastAPI application with own `CLAUDE.md` for backend-specific guidance
+- `specs/` directory contains all feature specifications, API
+  contracts, database schemas
+- `frontend/` contains Next.js application with own `CLAUDE.md`
+  for frontend-specific guidance
+- `backend/` contains FastAPI application with own `CLAUDE.md`
+  for backend-specific guidance
 - `docker-compose.yml` orchestrates local development environment
-- No code sharing between frontend and backend except via API contracts in specs
+- No code sharing between frontend and backend except via API
+  contracts in specs
 - Each subdirectory is independently deployable
-- Phase III chatbot logic MUST remain isolated, modular, and detachable
-- Phase IV infrastructure code MUST be separate from application code
+- Phase III chatbot logic MUST remain isolated, modular, and
+  detachable
+- Phase IV infrastructure code MUST be separate from application
+  code
+- Phase V lives as an evolution of the same project; no parallel
+  repos or rewrites
 
-**Rationale**: Clear separation of concerns, enables parallel frontend/backend development, explicit contracts prevent implicit coupling, supports independent scaling and deployment.
+**Rationale**: Clear separation of concerns, enables parallel
+frontend/backend development, explicit contracts prevent implicit
+coupling, supports independent scaling and deployment.
 
 ### V. API-First Design
 
-All backend functionality exposed through well-defined REST API endpoints documented in specs before implementation.
+All backend functionality exposed through well-defined REST API
+endpoints documented in specs before implementation.
 
 **Rules**:
-- API contracts defined in `specs/api/rest-endpoints.md` before implementation
-- Endpoints follow RESTful conventions: GET (read), POST (create), PUT (update), DELETE (delete), PATCH (partial update)
+- API contracts defined in `specs/api/rest-endpoints.md` before
+  implementation
+- Endpoints follow RESTful conventions: GET (read), POST (create),
+  PUT (update), DELETE (delete), PATCH (partial update)
 - All endpoints include user_id in path: `/api/{user_id}/tasks`
 - Request/response schemas defined with TypeScript/Python types
-- Error responses use standard HTTP status codes with descriptive messages
-- API documentation auto-generated from code annotations where possible
+- Error responses use standard HTTP status codes with descriptive
+  messages
+- API documentation auto-generated from code annotations where
+  possible
 
-**Rationale**: Contract-first approach enables parallel development, facilitates testing, provides clear interface for frontend, enables API versioning strategy.
+**Rationale**: Contract-first approach enables parallel development,
+facilitates testing, provides clear interface for frontend, enables
+API versioning strategy.
 
 ### VI. Database Schema Integrity
 
-Database schema managed through SQLModel ORM with explicit migrations, type safety, and user scoping.
+Database schema managed through SQLModel ORM with explicit
+migrations, type safety, and user scoping.
 
 **Rules**:
 - All models defined using SQLModel (Pydantic + SQLAlchemy)
 - Every user-specific table includes `user_id` foreign key
-- Migrations managed explicitly (Alembic or similar) before deployment
-- Database constraints enforce data integrity (NOT NULL, UNIQUE, FOREIGN KEY)
+- Migrations managed explicitly (Alembic or similar) before
+  deployment
+- Database constraints enforce data integrity (NOT NULL, UNIQUE,
+  FOREIGN KEY)
 - No raw SQL queries except for complex analytical queries
 - Connection pooling configured for production workloads
 - Schema documented in `specs/database/schema.md`
 
-**Rationale**: Type-safe ORM prevents runtime errors, migrations enable safe schema evolution, constraints provide database-level validation, documentation ensures schema visibility.
+**Rationale**: Type-safe ORM prevents runtime errors, migrations
+enable safe schema evolution, constraints provide database-level
+validation, documentation ensures schema visibility.
 
 ### VII. Phase III Additive Extension (NON-NEGOTIABLE)
 
-Phase III (AI-Powered Todo Chatbot) is a strict extension of the Phase II Full-Stack Todo Application. The chatbot is an additive layer, not a replacement.
+Phase III (AI-Powered Todo Chatbot) is a strict extension of the
+Phase II Full-Stack Todo Application. The chatbot is an additive
+layer, not a replacement.
 
 **Rules**:
-- Existing frontend, backend, APIs, database schema, and authentication MUST NOT be broken
-- No refactor of Phase II unless explicitly required for chatbot integration
+- Existing frontend, backend, APIs, database schema, and
+  authentication MUST NOT be broken
+- No refactor of Phase II unless explicitly required for chatbot
+  integration
 - Chatbot logic MUST remain isolated, modular, and detachable
 - Phase II MUST continue to work even if chatbot is disabled
 - Chat UI is an additive feature; existing Todo UI remains unchanged
 - Chatbot UI MUST degrade gracefully if backend is unavailable
 - No frontend logic duplication of backend rules
 
-**Rationale**: Ensures existing functionality remains stable, enables incremental rollout, allows chatbot removal without core app impact, maintains separation of concerns.
+**Rationale**: Ensures existing functionality remains stable, enables
+incremental rollout, allows chatbot removal without core app impact,
+maintains separation of concerns.
 
 ### VIII. Architectural Authority (NON-NEGOTIABLE)
 
-Backend remains the single source of truth. AI has no direct database access. All task mutations flow through the defined chain.
+Backend remains the single source of truth. AI has no direct
+database access. All task mutations flow through the defined chain.
 
 **Rules**:
-- All task mutations MUST go through: Agent → MCP Tool → FastAPI → Database
-- Chatbot MUST NOT bypass authentication, authorization, or business rules
-- AI agent receives user context only from backend, never from user input
+- All task mutations MUST go through:
+  Agent → MCP Tool → FastAPI → Database
+- Chatbot MUST NOT bypass authentication, authorization, or
+  business rules
+- AI agent receives user context only from backend, never from
+  user input
 - MCP tools are the only interface between AI and backend
 - Tool outputs MUST be deterministic and auditable
 
-**Rationale**: Maintains security boundaries, ensures consistent business logic enforcement, provides audit trail, prevents unauthorized data access.
+**Rationale**: Maintains security boundaries, ensures consistent
+business logic enforcement, provides audit trail, prevents
+unauthorized data access.
 
 ### IX. Stateless Server Law (NON-NEGOTIABLE)
 
-FastAPI server MUST remain fully stateless. No in-memory session or conversation state.
+FastAPI server MUST remain fully stateless. No in-memory session
+or conversation state.
 
 **Rules**:
 - No in-memory session or conversation state on server
@@ -158,11 +227,13 @@ FastAPI server MUST remain fully stateless. No in-memory session or conversation
 - All required state persisted to database or external store
 - Horizontal scaling MUST be supported without session affinity
 
-**Rationale**: Enables horizontal scaling, improves reliability, simplifies deployment, eliminates single points of failure.
+**Rationale**: Enables horizontal scaling, improves reliability,
+simplifies deployment, eliminates single points of failure.
 
 ### X. MCP Tool Sovereignty (NON-NEGOTIABLE)
 
-MCP server exposes only task-related tools. Each tool has a single responsibility and validates user ownership.
+MCP server exposes only task-related tools. Each tool has a single
+responsibility and validates user ownership.
 
 **Rules**:
 - Each MCP tool is stateless
@@ -170,13 +241,17 @@ MCP server exposes only task-related tools. Each tool has a single responsibilit
 - Each MCP tool validates user_id ownership before execution
 - AI agent MUST NOT invent tools
 - Tool outputs MUST be deterministic and auditable
-- Tools exposed: add_task, list_tasks, update_task, delete_task, complete_task
+- Tools exposed: add_task, list_tasks, update_task, delete_task,
+  complete_task
 
-**Rationale**: Constrains AI capabilities to defined operations, ensures security validation at tool level, provides predictable behavior.
+**Rationale**: Constrains AI capabilities to defined operations,
+ensures security validation at tool level, provides predictable
+behavior.
 
 ### XI. Agent Behavior Constraints (NON-NEGOTIABLE)
 
-AI agents MUST act only through MCP tools with explicit user confirmation and safe handling of ambiguity.
+AI agents MUST act only through MCP tools with explicit user
+confirmation and safe handling of ambiguity.
 
 **AI Agents MUST**:
 - Act only through MCP tools
@@ -191,11 +266,13 @@ AI agents MUST act only through MCP tools with explicit user confirmation and sa
 - Modify tasks of another user
 - Bypass authentication or authorization
 
-**Rationale**: Ensures safe AI behavior, prevents unintended data modification, maintains user trust, provides audit trail.
+**Rationale**: Ensures safe AI behavior, prevents unintended data
+modification, maintains user trust, provides audit trail.
 
 ### XII. Data Integrity & Safety (NON-NEGOTIABLE)
 
-All data operations MUST be transactional, safe, and non-destructive by default.
+All data operations MUST be transactional, safe, and
+non-destructive by default.
 
 **Rules**:
 - All writes MUST be transactional
@@ -206,7 +283,8 @@ All data operations MUST be transactional, safe, and non-destructive by default.
 - AI hallucinations prevented via tool-only execution
 - If unsure, AI MUST respond with clarification, not action
 
-**Rationale**: Protects data integrity, prevents data loss, ensures consistent state, maintains user confidence.
+**Rationale**: Protects data integrity, prevents data loss, ensures
+consistent state, maintains user confidence.
 
 ### XIII. Final Constitutional Law (NON-NEGOTIABLE)
 
@@ -214,11 +292,13 @@ All data operations MUST be transactional, safe, and non-destructive by default.
 **The backend is the authority.**
 **The database is the memory.**
 
-This principle supersedes all other guidance. No agent, tool, or process may violate this hierarchy.
+This principle supersedes all other guidance. No agent, tool, or
+process may violate this hierarchy.
 
 ### XIV. Infrastructure-Only Phase (NON-NEGOTIABLE)
 
-Phase IV is exclusively a deployment and infrastructure phase. No application logic changes are permitted.
+Phase IV is exclusively a deployment and infrastructure phase. No
+application logic changes are permitted.
 
 **Rules**:
 - Phase IV MUST NOT introduce new features
@@ -229,39 +309,57 @@ Phase IV is exclusively a deployment and infrastructure phase. No application lo
 - Infrastructure code MUST be separate from application code
 - All containerization and orchestration is additive only
 
-**Rationale**: Ensures deployment work cannot inadvertently break working application code, maintains separation between application development and infrastructure concerns.
+**Rationale**: Ensures deployment work cannot inadvertently break
+working application code, maintains separation between application
+development and infrastructure concerns.
 
 ### XV. Spec-Driven Infrastructure (NON-NEGOTIABLE)
 
-All infrastructure decisions MUST follow the spec-driven workflow. No ad-hoc CLI experimentation without specification backing.
+All infrastructure decisions MUST follow the spec-driven workflow.
+No ad-hoc CLI experimentation without specification backing.
 
 **Rules**:
 - All infrastructure follows: spec → plan → tasks → implement
-- Dockerfiles, Helm charts, and K8s manifests MUST be specified before creation
+- Dockerfiles, Helm charts, and K8s manifests MUST be specified
+  before creation
 - No ad-hoc kubectl or docker commands without spec backing
 - Infrastructure changes require spec updates first
 - All deployment configurations MUST be version-controlled
 - Rollback procedures MUST be documented in specs
 
-**Rationale**: Maintains traceability and reproducibility for infrastructure, prevents configuration drift, enables infrastructure as code best practices.
+**Rationale**: Maintains traceability and reproducibility for
+infrastructure, prevents configuration drift, enables
+infrastructure as code best practices.
 
 ### XVI. Local-First Cloud-Native (NON-NEGOTIABLE)
 
-Phase IV deployment target is local Minikube only. No cloud provider configurations.
+Phase IV deployment target is local Minikube only. Phase V extends
+deployment to cloud Kubernetes with a mandatory local-first
+promotion ladder.
 
 **Rules**:
-- Deployment target is Minikube (local Kubernetes)
-- No AWS, GCP, or Azure provider configurations
-- No production deployment assumptions
-- No cloud-specific services (managed databases, load balancers, etc.)
-- All services MUST work with local resources only
-- Ingress configurations MUST be Minikube-compatible
+- Phase IV: Deployment target is Minikube (local Kubernetes)
+- Phase IV: No AWS, GCP, or Azure provider configurations
+- Phase V: Everything MUST run successfully on Minikube first
+- Phase V: Cloud promotion follows the ladder: Local Docker Compose
+  → Minikube → Cloud Staging → Cloud Production
+- Phase V: Supported cloud targets: Azure AKS, Google GKE,
+  Oracle OKE (Always Free preferred)
+- Phase V: Helm charts from Phase IV MUST be reused; only
+  values/config differ between environments
+- All services MUST work with local resources before cloud
+  promotion
+- Zero application code changes between environments; all
+  differences absorbed by configuration
 
-**Rationale**: Ensures consistent local development environment, eliminates cloud vendor lock-in for development, enables offline development and testing.
+**Rationale**: Ensures consistent local development environment,
+enables offline development and testing, guarantees cloud
+portability through configuration-only promotion.
 
 ### XVII. Reproducible Deployment (NON-NEGOTIABLE)
 
-A fresh machine MUST be able to reproduce the deployment using specifications alone. No hidden steps, no manual tweaks.
+A fresh machine MUST be able to reproduce the deployment using
+specifications alone. No hidden steps, no manual tweaks.
 
 **Rules**:
 - All deployment steps MUST be documented in specs
@@ -269,37 +367,269 @@ A fresh machine MUST be able to reproduce the deployment using specifications al
 - Environment setup MUST be fully automated
 - All dependencies MUST be explicitly declared
 - Helm values MUST be sufficient for complete deployment
-- Secrets handling MUST be documented (without exposing actual secrets)
+- Secrets handling MUST be documented (without exposing actual
+  secrets)
 
-**Rationale**: Ensures any developer can reproduce the deployment, eliminates tribal knowledge, enables CI/CD readiness for future phases.
+**Rationale**: Ensures any developer can reproduce the deployment,
+eliminates tribal knowledge, enables CI/CD readiness.
 
 ### XVIII. AI-Assisted DevOps Sovereignty (NON-NEGOTIABLE)
 
-AI DevOps tools (Docker AI, kubectl-ai, kagent) are preferred for infrastructure operations. Manual CLI is fallback only.
+AI DevOps tools (Docker AI, kubectl-ai, kagent) are preferred for
+infrastructure operations. Manual CLI is fallback only.
 
 **Rules**:
-- Docker AI Agent (Gordon) MUST be preferred for Dockerfile generation and optimization
-- kubectl-ai MUST be used for deployments, scaling, and pod debugging
-- kagent MUST be used for cluster health analysis and resource optimization
-- Manual CLI fallback MUST be explicitly documented when AI tools unavailable
+- Docker AI Agent (Gordon) MUST be preferred for Dockerfile
+  generation and optimization
+- kubectl-ai MUST be used for deployments, scaling, and pod
+  debugging
+- kagent MUST be used for cluster health analysis and resource
+  optimization
+- Manual CLI fallback MUST be explicitly documented when AI tools
+  unavailable
 - All AI tool outputs MUST be validated against specifications
 - AI tools MUST NOT modify application behavior
 
-**Rationale**: Leverages AI assistance for infrastructure optimization, maintains consistency in operations, provides intelligent troubleshooting.
+**Rationale**: Leverages AI assistance for infrastructure
+optimization, maintains consistency in operations, provides
+intelligent troubleshooting.
 
 ### XIX. Failure Diagnosis Protocol (NON-NEGOTIABLE)
 
-All deployment failures MUST be diagnosed, explained, and fixed with minimal changes. Silent retries and destructive resets are forbidden.
+All deployment failures MUST be diagnosed, explained, and fixed
+with minimal changes. Silent retries and destructive resets are
+forbidden.
 
 **Rules**:
 - Any failure MUST be diagnosed via kubectl-ai or kagent
 - Root cause MUST be explained before fix is applied
 - Fixes MUST use the smallest possible change
 - Silent retries without explanation are forbidden
-- Destructive resets (delete all, recreate) require explicit justification
+- Destructive resets (delete all, recreate) require explicit
+  justification
 - All failures and resolutions MUST be logged
 
-**Rationale**: Ensures learning from failures, prevents recurring issues, maintains system stability, provides audit trail for troubleshooting.
+**Rationale**: Ensures learning from failures, prevents recurring
+issues, maintains system stability, provides audit trail for
+troubleshooting.
+
+### XX. Event-Driven First (NON-NEGOTIABLE)
+
+All advanced behaviors (reminders, recurring tasks, audit logs,
+real-time sync) MUST be event-driven. Kafka is the messaging
+backbone. Direct synchronous coupling between services is
+discouraged for state-changing operations.
+
+**Rules**:
+- Every state-changing operation MUST publish a domain event to
+  Kafka
+- No feature is allowed to silently mutate state without emitting
+  an event
+- Events follow the naming convention:
+  `<domain>.<entity>.<action>` (e.g., `todo.task.created`)
+- All events use the canonical envelope: eventId, eventType,
+  eventVersion, timestamp, source, correlationId, payload
+- Synchronous HTTP/gRPC is permitted only for read operations and
+  service health checks
+- Event consumers MUST be idempotent
+- Dead-letter queues MUST be configured for every consumer
+
+**Rationale**: Decouples services for independent scaling and
+deployment, enables real-time reactivity, provides audit trail
+through event log, supports eventual consistency patterns.
+
+### XXI. Dapr Abstraction Layer (NON-NEGOTIABLE)
+
+All infrastructure dependencies MUST be abstracted via Dapr
+building blocks. Application code talks only to Dapr HTTP APIs,
+never directly to Kafka, databases, or cloud-specific services.
+
+**Mandatory Dapr building blocks**:
+- **Pub/Sub**: Kafka abstraction for event publishing and
+  subscribing
+- **State Management**: Key-value state for caching and
+  intermediate processing
+- **Service Invocation**: Service-to-service calls via sidecar mesh
+- **Jobs API**: Scheduled reminders and recurring task triggers
+- **Secrets Management**: Secure credential access
+
+**Rules**:
+- Application code MUST NOT import Kafka client libraries directly
+- Application code MUST NOT read database credentials from
+  environment; use Dapr Secrets API
+- Switching infrastructure providers (e.g., Kafka → RabbitMQ,
+  Redis → Memcached) MUST NOT require code changes — only Dapr
+  component YAML changes
+- Dapr component names MUST be identical across all environments
+  (local, staging, production)
+- Dapr sidecar MUST be injected in all Kubernetes deployments
+
+**Rationale**: Infrastructure abstraction enables provider
+portability, simplifies application code, provides consistent
+API surface across environments, enables zero-code-change
+cloud promotion.
+
+### XXII. Feature Event Governance (NON-NEGOTIABLE)
+
+All advanced and intermediate Todo features MUST emit domain
+events. The system MUST support recurring tasks, due dates,
+reminders, priorities, tags, and search/filter/sort — all
+governed by event-driven contracts.
+
+**Rules**:
+- Feature logic MUST emit domain events for all significant
+  state changes
+- Every feature MUST define: producer service, consumer services,
+  event schema, Kafka topic, and Dapr binding
+- Features MUST be designed schema-first: data model before API,
+  API before implementation
+- Event trigger mappings MUST be documented for every feature
+- Features MUST NOT introduce silent state mutations
+- Read-only operations (search, filter, list) are exempt from
+  event publication
+
+**Rationale**: Ensures all features participate in the event-driven
+architecture, enables cross-service reactivity, maintains audit
+trail for all state changes.
+
+### XXIII. Kafka Schema Governance (NON-NEGOTIABLE)
+
+Kafka topics are contracts. Event schemas MUST be explicit,
+versioned, and backward-compatible. Producers MUST NOT break
+consumers.
+
+**Rules**:
+- Topics follow naming convention:
+  `<domain>.<bounded-context>.<event-name>`
+- Event schemas MUST be versioned using semantic versioning
+  (eventVersion field)
+- BACKWARD compatibility is the default mode for all domain event
+  topics
+- FULL compatibility is required for critical events (completions,
+  deletions)
+- Adding optional fields with defaults is a safe change (no
+  version bump)
+- Removing, renaming, or retyping fields is a breaking change
+  requiring a major version bump and migration plan
+- Schema registry MUST be the source of truth for all event
+  schemas
+- Kafka provider flexibility: Local uses Redpanda or Strimzi;
+  Cloud uses Redpanda Cloud, Confluent, or equivalent
+- Switching Kafka providers MUST NOT require code changes — only
+  Dapr component configuration changes
+
+**Rationale**: Prevents consumer breakage from schema evolution,
+enables independent service deployment, provides contract-based
+integration, ensures Kafka provider portability.
+
+### XXIV. Local-First Cloud Promotion (NON-NEGOTIABLE)
+
+Everything MUST run successfully on Minikube before promotion
+to cloud Kubernetes. Cloud deployment MUST reuse Phase IV Helm
+charts with only values/config overrides.
+
+**Promotion Ladder** (mandatory order):
+1. Local Docker Compose — basic service health and contract tests
+2. Local Kubernetes (Minikube) — Helm chart validation with Dapr
+   sidecars
+3. Cloud Staging — full integration with managed Kafka, Dapr
+   pub/sub, cloud services
+4. Cloud Production — canary then progressive rollout
+
+**Rules**:
+- Phase IV Helm charts are authoritative and MUST be reused
+- New Helm charts are permitted only when Phase IV charts
+  genuinely cannot be extended
+- Cloud deployment differences MUST be limited to
+  `values-{env}.yaml` overrides and Dapr component metadata
+  swaps
+- Dapr MUST be enabled cluster-wide on all cloud targets
+- Zero application code changes between environments
+- Quality gates MUST be passed before promotion to next stage
+
+**Rationale**: Ensures deployment reliability through incremental
+promotion, prevents cloud-specific lock-in, maximizes reuse of
+validated infrastructure artifacts.
+
+### XXV. CI/CD Pipeline Mandate (NON-NEGOTIABLE)
+
+GitHub Actions is the mandatory CI/CD platform. All production
+deployments MUST flow through automated pipelines. Manual
+`kubectl apply` is discouraged in production.
+
+**Rules**:
+- GitHub Actions workflows MUST: build Docker images, push to
+  container registry, deploy via Helm, and run post-deployment
+  health checks
+- Every pipeline MUST include a rollback strategy
+- Pipeline secrets MUST be stored in GitHub Secrets, never in
+  repository files
+- Branch protection MUST enforce pipeline success before merge
+- Container image tags MUST use git SHA for staging and semantic
+  versioning for production
+- Manual `kubectl apply` is permitted only for local development
+  and emergency production hotfixes (with justification)
+
+**Rationale**: Automates deployment for reliability and speed,
+eliminates human error in production deployments, enforces
+consistent build and release process.
+
+### XXVI. Observability and Reliability (NON-NEGOTIABLE)
+
+Monitoring, logging, and failure visibility MUST be enabled for
+all deployed services. Retry, idempotency, and resilience MUST
+be explicitly configured for all asynchronous flows.
+
+**Rules**:
+- All services MUST expose health check endpoints
+- Deployment health, event flow health, and failure visibility
+  MUST be observable
+- Structured JSON logging MUST be used for all services
+- Dapr resiliency policies (retries, timeouts, circuit breakers)
+  MUST be explicitly configured — not relying on defaults
+- Dead-letter queues MUST be monitored with alerting thresholds
+- Kafka consumer lag MUST be tracked and alerted on
+- Error classification (transient vs permanent) MUST guide retry
+  decisions
+- Every consumer MUST implement an idempotency mechanism
+
+**Rationale**: Ensures operational visibility, enables proactive
+failure detection, prevents cascading failures through resilience
+patterns, supports SLA compliance.
+
+### XXVII. Phase V Agent Sovereignty (NON-NEGOTIABLE)
+
+Specialized agents MUST be used for their designated domains.
+Agents may make decisions autonomously within their domain.
+Cross-cutting or cost-impacting decisions MUST be escalated to
+the Phase V Orchestrator.
+
+**Designated agents and domains**:
+- **Phase V Orchestrator**: Rollout sequencing, promotion
+  decisions, dependency resolution
+- **Advanced Features Architect**: Feature schemas, event
+  contracts, filter/search design
+- **Kafka Event Architect**: Topic definitions, schema governance,
+  producer/consumer boundaries
+- **Dapr Integration**: Component YAML authoring, API patterns,
+  sidecar configuration
+- **Notification Scheduler**: Retry policies, DLQ handling,
+  reminder dispatch
+- **Cloud Deployment**: Cluster setup, Helm promotion,
+  environment parity
+- **CI/CD & Observability**: Pipeline configuration, monitoring,
+  alerting
+
+**Rules**:
+- Agents MUST NOT operate outside their designated domain
+- Cross-domain decisions require Orchestrator coordination
+- Cloud cost and quota decisions MUST be escalated to the user
+- Security-sensitive decisions MUST be escalated to the user
+- All agent actions MUST be traceable to a spec, plan, or task
+
+**Rationale**: Prevents domain conflicts, ensures specialized
+expertise is applied correctly, maintains clear accountability,
+provides escalation path for high-impact decisions.
 
 ## Technology Stack Constraints
 
@@ -312,7 +642,10 @@ All deployment failures MUST be diagnosed, explained, and fixed with minimal cha
 **Authentication**: Better Auth library for JWT generation
 **API Client**: Native fetch with custom wrapper for token injection
 
-**Justification**: Next.js App Router provides server components for performance, TypeScript eliminates entire classes of bugs, Tailwind enables rapid UI development, Better Auth simplifies JWT flows.
+**Justification**: Next.js App Router provides server components
+for performance, TypeScript eliminates entire classes of bugs,
+Tailwind enables rapid UI development, Better Auth simplifies
+JWT flows.
 
 ### Backend Requirements (Phase II)
 
@@ -323,7 +656,10 @@ All deployment failures MUST be diagnosed, explained, and fixed with minimal cha
 **Deployment**: Docker container with Python 3.13-slim base
 **Development**: uv for dependency management
 
-**Justification**: FastAPI provides automatic OpenAPI docs and high performance, SQLModel combines ORM with validation, Neon offers serverless PostgreSQL with zero-downtime scaling, PyJWT is industry standard for JWT verification.
+**Justification**: FastAPI provides automatic OpenAPI docs and
+high performance, SQLModel combines ORM with validation, Neon
+offers serverless PostgreSQL with zero-downtime scaling, PyJWT
+is industry standard for JWT verification.
 
 ### Phase III Technology Stack (STRICT - NO ALTERNATIVES)
 
@@ -345,13 +681,16 @@ All deployment failures MUST be diagnosed, explained, and fixed with minimal cha
 - Frontend uses only public-safe environment variables
 - Backend owns all privileged credentials
 
-**Justification**: Standardized stack ensures consistent behavior, official SDKs provide stability and support, environment-based secrets enable secure deployment.
+**Justification**: Standardized stack ensures consistent behavior,
+official SDKs provide stability and support, environment-based
+secrets enable secure deployment.
 
 ### Phase IV Technology Stack (STRICT - NO ALTERNATIVES)
 
 **Containerization**:
 - Docker (Docker Desktop)
-- Docker AI Agent (Gordon) — preferred for Dockerfile generation and optimization
+- Docker AI Agent (Gordon) — preferred for Dockerfile generation
+  and optimization
 - Standard Docker CLI — fallback when Gordon unavailable
 
 **Orchestration**:
@@ -379,19 +718,80 @@ All deployment failures MUST be diagnosed, explained, and fixed with minimal cha
 - `DATABASE_URL` - Neon PostgreSQL connection string
 
 **Constraints**:
-- All documentation and commands MUST reference MCP Server Context 7 documentation
+- All documentation and commands MUST reference MCP Server
+  Context 7 documentation
 - No guessing or outdated instructions
 - .env files are NOT committed to version control
 - Secrets MUST be passed via Helm values or Kubernetes secrets
-- Absence of secrets during spec/plan stages MUST NOT break implementation
+- Absence of secrets during spec/plan stages MUST NOT break
+  implementation
 
-**Justification**: Local-first approach enables consistent development environments, Helm provides declarative configuration management, AI-assisted tooling optimizes operations.
+**Justification**: Local-first approach enables consistent
+development environments, Helm provides declarative configuration
+management, AI-assisted tooling optimizes operations.
+
+### Phase V Technology Stack (STRICT - NO ALTERNATIVES)
+
+**Event Messaging**:
+- Apache Kafka (or Kafka-compatible system)
+- Local: Redpanda or Strimzi (on Minikube)
+- Cloud: Redpanda Cloud, Confluent Cloud, or equivalent managed
+  Kafka
+
+**Runtime Abstraction**:
+- Dapr (Distributed Application Runtime)
+- Dapr building blocks: Pub/Sub, State Management, Service
+  Invocation, Jobs API, Secrets Management
+- Dapr resiliency policies for retry, timeout, circuit breaker
+
+**Cloud Kubernetes Targets**:
+- Azure AKS
+- Google GKE
+- Oracle OKE (Always Free tier preferred)
+
+**CI/CD**:
+- GitHub Actions (mandatory pipeline platform)
+
+**Observability**:
+- Structured JSON logging
+- Health check endpoints on all services
+- Dapr distributed tracing
+
+**Applications Deployed** (extending Phase IV):
+- All Phase IV services
+- Kafka broker (Redpanda or Strimzi)
+- Dapr sidecar injected on all services
+- Dapr component configurations (pub/sub, state, secrets)
+
+**Required Environment Variables** (extending Phase IV,
+injected via Dapr Secrets API or K8s Secrets):
+- All Phase IV environment variables
+- Kafka broker credentials (via Dapr secret store)
+- Cloud provider credentials (for AKS/GKE/OKE CLI tools)
+- GitHub Actions secrets (for CI/CD pipeline)
+
+**Constraints**:
+- Application code MUST NOT import Kafka client libraries
+- Application code MUST communicate only via Dapr HTTP APIs
+- Switching Kafka or state store providers MUST NOT require
+  code changes
+- Phase IV Helm charts MUST be reused and extended, never
+  rewritten from scratch
+- All Phase IV Docker images MUST be reused
+- Dapr component names MUST be identical across environments
+
+**Justification**: Kafka provides durable event log and
+decoupled messaging, Dapr abstracts infrastructure for
+portability, cloud targets offer managed Kubernetes with
+varying cost profiles, GitHub Actions integrates with
+repository workflow.
 
 ### Shared Standards
 
 **Version Control**: Git with conventional commits
 **Environment Variables**: `.env.local` files (never committed)
-**Secrets Management**: Environment variables for all secrets
+**Secrets Management**: Environment variables for all secrets;
+Dapr Secrets API for Phase V services
 **API Documentation**: OpenAPI 3.0 auto-generated from FastAPI
 **Logging**: Structured JSON logs for production
 
@@ -418,7 +818,7 @@ All deployment failures MUST be diagnosed, explained, and fixed with minimal cha
 4. Conversation persistence and continuity
 5. End-to-end testing of chatbot flows
 
-**Phase IV: Local Kubernetes Deployment** (Current)
+**Phase IV: Local Kubernetes Deployment** (Complete)
 1. Dockerfile creation for all services (via Docker AI/Gordon)
 2. Helm chart generation for Kubernetes packaging
 3. Minikube cluster setup and configuration
@@ -426,10 +826,22 @@ All deployment failures MUST be diagnosed, explained, and fixed with minimal cha
 5. Cluster health validation via kagent
 6. End-to-end deployment verification
 
+**Phase V: Advanced Cloud Deployment** (Current)
+1. Advanced Todo features (recurring tasks, reminders, priorities,
+   tags, search/filter/sort) with event-driven architecture
+2. Kafka integration via Dapr Pub/Sub abstraction
+3. Dapr runtime integration (state, invocation, jobs, secrets)
+4. Local Minikube validation with Dapr sidecars and Kafka
+5. Cloud promotion to AKS / GKE / OKE
+6. CI/CD pipeline via GitHub Actions
+7. Observability, monitoring, and resilience configuration
+8. End-to-end event flow verification
+
 **Workflow Steps**:
 1. Review spec in `specs/features/[feature].md`
 2. Invoke Claude Code: "Implement @specs/features/[feature].md"
-3. Claude Code reads root `CLAUDE.md` + feature spec + API spec + database schema + relevant frontend/backend guidance
+3. Claude Code reads root `CLAUDE.md` + feature spec + API spec
+   + database schema + relevant frontend/backend guidance
 4. Claude Code implements frontend and backend in parallel
 5. Run integration tests to verify behavior
 6. Iterate on spec if requirements change
@@ -445,63 +857,118 @@ All deployment failures MUST be diagnosed, explained, and fixed with minimal cha
 
 **Agent Roles (Phase II)**:
 - `spec-intelligence` - Validates and clarifies specifications
-- `frontend-app-builder` - Implements Next.js UI and API integration
-- `backend-api-builder` - Implements FastAPI endpoints and database operations
+- `frontend-app-builder` - Implements Next.js UI and API
+  integration
+- `backend-api-builder` - Implements FastAPI endpoints and
+  database operations
 - `auth-bridge-verifier` - Ensures JWT authentication correctness
 - `database-guardian` - Validates schema integrity and user scoping
 - `phase-ii-orchestrator` - Coordinates multi-agent implementation
 
 **Agent Roles (Phase III)**:
 - `mcp-tool-validator` - Validates MCP tool calls before execution
-- `intent-resolver` - Translates natural language to actionable intents
-- `user-context-guardian` - Validates user context for all operations
-- `tool-chain-orchestrator` - Manages multi-tool operation sequences
+- `intent-resolver` - Translates natural language to actionable
+  intents
+- `user-context-guardian` - Validates user context for all
+  operations
+- `tool-chain-orchestrator` - Manages multi-tool operation
+  sequences
 - `conversation-context-manager` - Handles conversation continuity
-- `error-translator` - Converts system errors to user-friendly messages
+- `error-translator` - Converts system errors to user-friendly
+  messages
 
 **Agent Roles (Phase IV)**:
-- `phase4-deployment-orchestrator` - Coordinates Phase IV deployment workflow
-- `containerization-docker` - Generates and optimizes Dockerfiles via Docker AI
-- `helm-chart-generator` - Creates Helm charts for Kubernetes packaging
+- `phase4-deployment-orchestrator` - Coordinates Phase IV
+  deployment workflow
+- `containerization-docker` - Generates and optimizes Dockerfiles
+  via Docker AI
+- `helm-chart-generator` - Creates Helm charts for Kubernetes
+  packaging
 - `kubectl-ops` - Executes Kubernetes operations via kubectl-ai
-- `kagent` - Analyzes cluster health and provides optimization insights
-- `dev-environment-validator` - Validates local development environment setup
+- `kagent` - Analyzes cluster health and provides optimization
+  insights
+- `dev-environment-validator` - Validates local development
+  environment setup
+
+**Agent Roles (Phase V)**:
+- `phase-v-orchestrator` - Coordinates Phase V execution across
+  features, Dapr, Kafka, and cloud deployment
+- `advanced-features-architect` - Designs feature schemas, event
+  contracts, filter/search/sort systems
+- `kafka-event-architect` - Defines Kafka topics, schema
+  governance, producer/consumer boundaries
+- `dapr-integration` - Authors Dapr component YAML, configures
+  API patterns, manages sidecar integration
+- `notification-scheduler` - Implements retry policies, DLQ
+  handling, reminder dispatch, Jobs API callbacks
+- `cloud-k8s-deployer` - Manages cluster setup, Helm promotion,
+  environment parity across AKS/GKE/OKE
+- `cicd-observability` - Configures GitHub Actions pipelines,
+  monitoring, logging, and alerting
 
 ### Git Workflow
 
 **Branch Strategy**: Feature branches from master
-**Commit Messages**: Conventional commits (feat, fix, docs, refactor, test)
-**PR Requirements**: All tests pass, spec references included in description
-**Code Review**: Automated via Claude Code review agent before merge
+**Commit Messages**: Conventional commits (feat, fix, docs,
+refactor, test)
+**PR Requirements**: All tests pass, spec references included in
+description
+**Code Review**: Automated via Claude Code review agent before
+merge
 
-## Deployment Architecture (Phase IV)
+## Deployment Architecture
 
-### Service Topology
+### Phase IV Service Topology
 
-Each major component MUST be deployed as a separate Kubernetes Deployment:
+Each major component MUST be deployed as a separate Kubernetes
+Deployment:
 - `frontend` - Next.js application
 - `backend` - FastAPI application
 - `mcp-server` - MCP tool server
 - `ai-agent` - AI agent service
 
+### Phase V Service Topology (Extending Phase IV)
+
+Phase IV services plus:
+- `kafka` - Kafka broker (Redpanda or Strimzi on Minikube;
+  managed on cloud)
+- Dapr sidecar injected on all application pods
+- Dapr component configurations for pub/sub, state, secrets,
+  bindings
+
+Event-driven services (as features are implemented):
+- `notification-svc` - Notification dispatch and delivery
+- `recurrence-svc` - Recurring task instance generation
+- `reminder-svc` - Reminder scheduling via Dapr Jobs API
+- `search-indexer` - Search index maintenance from event stream
+- `analytics-svc` - Event-driven analytics and audit
+
 ### Service Exposure
 
-- Services MUST be exposed via Kubernetes Services (ClusterIP or NodePort)
-- Ingress MAY be enabled if required (Minikube-compatible)
+- Services MUST be exposed via Kubernetes Services (ClusterIP or
+  NodePort)
+- Ingress MAY be enabled if required (Minikube-compatible for
+  Phase IV; cloud Load Balancer for Phase V)
 - Frontend MUST communicate with backend via internal service DNS
+- Phase V: Dapr service invocation MUST be used for
+  service-to-service calls
 
 ### Environment Configuration
 
 - Environment variables MUST be injected via Helm values
-- Secrets MUST be managed via Kubernetes Secrets
+- Secrets MUST be managed via Kubernetes Secrets or Dapr Secrets
+  API
 - No hardcoded configuration in container images
 - ConfigMaps for non-sensitive configuration
+- Phase V: Dapr component metadata MUST use secretKeyRef for
+  all sensitive values
 
 ## Security Standards
 
 ### Authentication Security
 
-- JWTs include expiry (`exp` claim) with reasonable lifetime (1-24 hours)
+- JWTs include expiry (`exp` claim) with reasonable lifetime
+  (1-24 hours)
 - Secrets stored in environment variables, never in code
 - HTTPS required for all production API traffic
 - Token refresh strategy defined before production deployment
@@ -512,7 +979,8 @@ Each major component MUST be deployed as a separate Kubernetes Deployment:
 - All user inputs validated on backend (never trust frontend)
 - SQL injection prevention via ORM parameterized queries
 - XSS prevention via React's automatic escaping
-- CSRF protection via SameSite cookies for auth tokens (if cookie-based)
+- CSRF protection via SameSite cookies for auth tokens
+  (if cookie-based)
 - AI agent inputs validated through MCP tool layer
 
 ### Data Privacy
@@ -522,13 +990,20 @@ Each major component MUST be deployed as a separate Kubernetes Deployment:
 - No logging of sensitive data (passwords, full tokens)
 - Database connections use SSL in production
 - AI does not retain user data beyond conversation scope
+- Phase V: Event payloads MUST NOT contain PII without explicit
+  justification and field-level encryption annotation
 
-### Infrastructure Security (Phase IV)
+### Infrastructure Security (Phase IV + V)
 
 - Kubernetes Secrets for all sensitive values
 - No secrets in Helm values files committed to version control
 - Container images MUST use non-root users where possible
 - Network policies MAY be applied for service isolation
+- Phase V: Dapr mTLS MUST be enabled for service-to-service
+  communication on cloud clusters
+- Phase V: Kafka SASL authentication MUST be enabled on cloud
+  deployments
+- Phase V: GitHub Actions secrets for CI/CD pipeline credentials
 
 ## Quality Gates
 
@@ -540,7 +1015,11 @@ Each major component MUST be deployed as a separate Kubernetes Deployment:
 - [ ] User isolation verified in spec
 - [ ] Authentication requirements explicit
 - [ ] Phase III: MCP tool requirements defined (if AI-related)
-- [ ] Phase IV: Deployment architecture specified (if infrastructure-related)
+- [ ] Phase IV: Deployment architecture specified
+  (if infrastructure-related)
+- [ ] Phase V: Event contracts defined (producer, consumer,
+  schema, topic)
+- [ ] Phase V: Dapr component requirements identified
 
 ### During Implementation
 
@@ -551,6 +1030,9 @@ Each major component MUST be deployed as a separate Kubernetes Deployment:
 - [ ] Error handling returns appropriate status codes
 - [ ] Phase III: AI agent uses only defined MCP tools
 - [ ] Phase IV: Dockerfiles and Helm charts follow specifications
+- [ ] Phase V: All state changes emit domain events
+- [ ] Phase V: Dapr APIs used (no direct Kafka/DB client imports)
+- [ ] Phase V: Idempotency implemented on all consumers
 
 ### Before Deployment
 
@@ -559,9 +1041,17 @@ Each major component MUST be deployed as a separate Kubernetes Deployment:
 - [ ] User isolation verified via integration tests
 - [ ] Environment variables documented
 - [ ] Docker Compose setup tested locally
-- [ ] Phase III: Chatbot degradation tested (backend unavailable scenario)
+- [ ] Phase III: Chatbot degradation tested (backend unavailable
+  scenario)
 - [ ] Phase IV: All pods healthy and restart-safe
 - [ ] Phase IV: Deployment reproducible from specs alone
+- [ ] Phase V: Event flow verified end-to-end (publish →
+  consume → side-effect)
+- [ ] Phase V: Minikube validation passes before cloud promotion
+- [ ] Phase V: Dapr sidecar healthy on all pods
+- [ ] Phase V: Kafka consumer lag within thresholds
+- [ ] Phase V: CI/CD pipeline builds, deploys, and rolls back
+  successfully
 
 ## Phase III Success Definition
 
@@ -585,6 +1075,31 @@ Phase IV is successful if:
 - No manual steps are required post-implementation
 - Phase II and Phase III functionality remain fully operational
 
+## Phase V Success Definition
+
+Phase V is successful if:
+- Advanced Todo features (recurring tasks, reminders, priorities,
+  tags, search/filter/sort) are functional and event-driven
+- All state changes publish domain events to Kafka
+- Application code communicates only via Dapr HTTP APIs (no
+  direct Kafka or cloud SDK imports)
+- Everything runs on Minikube with Dapr sidecars and Kafka
+  before cloud promotion
+- Cloud deployment (AKS, GKE, or OKE) uses Phase IV Helm charts
+  with values overrides only
+- Switching Kafka providers requires only Dapr component
+  configuration changes, no code changes
+- CI/CD pipeline builds, deploys, and supports rollback via
+  GitHub Actions
+- Monitoring exposes deployment health, event flow health, and
+  failure visibility
+- Retry, idempotency, and resilience are explicitly configured
+  for all async flows
+- Phase II, III, and IV functionality remain fully operational
+- The system clearly demonstrates clean separation of concerns,
+  event-driven thinking, cloud portability, infrastructure
+  abstraction via Dapr, and spec-driven AI development discipline
+
 ## Phase IV Explicit Out-of-Scope
 
 The following are explicitly NOT part of Phase IV:
@@ -596,9 +1111,22 @@ The following are explicitly NOT part of Phase IV:
 - Service mesh implementations
 - Multi-cluster deployments
 
+## Phase V Explicit Out-of-Scope
+
+The following are explicitly NOT part of Phase V:
+- Multi-region or multi-cluster deployments
+- Custom Kafka Streams or ksqlDB processing
+- GraphQL API layer
+- Mobile application clients
+- Machine learning model training pipelines
+- Third-party SaaS integrations beyond notification dispatch
+- Cost optimization automation (quota decisions escalated to user)
+
 ## Governance
 
-This constitution is the supreme authority for all development practices. Any deviation requires explicit justification documented in an ADR (Architecture Decision Record).
+This constitution is the supreme authority for all development
+practices. Any deviation requires explicit justification documented
+in an ADR (Architecture Decision Record).
 
 **Amendment Process**:
 1. Propose change with rationale
@@ -608,8 +1136,10 @@ This constitution is the supreme authority for all development practices. Any de
 5. Create migration plan if breaking changes
 
 **Versioning**:
-- MAJOR: Breaking changes to principles (e.g., removing JWT auth, changing monorepo structure, adding non-negotiable principles)
-- MINOR: New principles or significant expansions (e.g., adding new security requirement)
+- MAJOR: Breaking changes to principles (e.g., removing JWT auth,
+  changing monorepo structure, adding non-negotiable principles)
+- MINOR: New principles or significant expansions (e.g., adding
+  new security requirement)
 - PATCH: Clarifications, typo fixes, non-semantic refinements
 
 **Compliance**:
@@ -619,8 +1149,10 @@ This constitution is the supreme authority for all development practices. Any de
 - Use `CLAUDE.md` at root and subdirectories for runtime guidance
 
 **Constitutional Authority**:
-- Constitution overrides conflicting guidance in individual `CLAUDE.md` files
-- Agents cite constitution section when rejecting non-compliant requests
+- Constitution overrides conflicting guidance in individual
+  `CLAUDE.md` files
+- Agents cite constitution section when rejecting non-compliant
+  requests
 - User can override principles only by amending constitution first
 
-**Version**: 3.0.0 | **Ratified**: 2026-01-05 | **Last Amended**: 2026-02-03
+**Version**: 4.0.0 | **Ratified**: 2026-01-05 | **Last Amended**: 2026-02-07

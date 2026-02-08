@@ -1,0 +1,42 @@
+# Tags API Contract - 006-advanced-todo-features
+# Date: 2026-02-07
+
+openapi: "3.0.3"
+info:
+  title: Tags API
+  version: "1.0.0"
+  description: Endpoint for retrieving user's distinct tags for autocomplete.
+
+paths:
+  /api/{user_id}/tags:
+    get:
+      operationId: listUserTags
+      summary: Get distinct tags across all user's tasks
+      description: >
+        Returns a sorted, deduplicated list of all tags used by the
+        authenticated user. Used for tag autocomplete in the frontend.
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: List of distinct tags
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TagListResponse"
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden }
+
+components:
+  schemas:
+    TagListResponse:
+      type: object
+      properties:
+        tags:
+          type: array
+          items: { type: string }
+          description: "Sorted list of distinct tags"
+          example: ["errands", "meeting", "personal", "work"]

@@ -9,7 +9,7 @@
  */
 
 import type { User, APIResponse } from '@/types/auth'
-import type { Task, TaskFormData } from '@/types/task'
+import type { Task, TaskFormData, PaginatedTaskResponse, TaskFilters, Reminder } from '@/types/task'
 
 /**
  * Generate a UUID v4
@@ -196,138 +196,321 @@ class APIClient {
   }
 
   /**
-   * Get Tasks
+   * Get Tasks (Phase V: paginated with filters)
    *
-   * Fetch all tasks for authenticated user.
-   * Mocked: Returns empty array (task-context manages actual tasks).
-   * Future: Will call GET /api/tasks with Authorization header.
+   * Fetch tasks for authenticated user with optional filters.
+   * Calls GET /api/{userId}/tasks with query parameters.
    */
-  async getTasks(): Promise<APIResponse<Task[]>> {
-    await this.delay()
-
+  async getTasks(userId: string, filters?: TaskFilters): Promise<APIResponse<PaginatedTaskResponse>> {
     try {
-      // Mocked: Return empty array
-      // In real implementation, this will fetch from backend
-      return {
-        success: true,
-        data: [],
-        error: null,
-        statusCode: 200,
+      const params = new URLSearchParams()
+      if (filters?.q) params.set('q', filters.q)
+      if (filters?.completed !== undefined) params.set('completed', String(filters.completed))
+      if (filters?.priority) params.set('priority', filters.priority)
+      if (filters?.tag) params.set('tag', filters.tag)
+      if (filters?.overdue) params.set('overdue', 'true')
+      if (filters?.dueBefore) params.set('due_before', filters.dueBefore)
+      if (filters?.dueAfter) params.set('due_after', filters.dueAfter)
+      if (filters?.sortBy) params.set('sort_by', filters.sortBy)
+      if (filters?.sortOrder) params.set('sort_order', filters.sortOrder)
+      if (filters?.limit) params.set('limit', String(filters.limit))
+      if (filters?.offset) params.set('offset', String(filters.offset))
+
+      const qs = params.toString()
+      const url = `${this.baseURL}/api/${userId}/tasks${qs ? `?${qs}` : ''}`
+
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${this.token}`,
+        },
+      })
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        return {
+          success: false,
+          data: null,
+          error: data.detail || data.error || 'Failed to fetch tasks',
+          statusCode: response.status,
+        }
       }
+
+      const data = await response.json()
+
+      // Map snake_case backend response to camelCase frontend types
+      const mapped: PaginatedTaskResponse = {
+        tasks: data.tasks.map((t: any) => ({
+          id: t.id,
+          title: t.title,
+          description: t.description || '',
+          completed: t.completed,
+          priority: t.priority || 'none',
+          tags: t.tags || [],
+          dueDate: t.due_date || null,
+          isOverdue: t.is_overdue || false,
+          recurrenceRule: t.recurrence_rule || null,
+          recurrenceGroupId: t.recurrence_group_id || null,
+          createdAt: new Date(t.created_at),
+          updatedAt: t.updated_at ? new Date(t.updated_at) : undefined,
+        })),
+        total: data.total,
+        limit: data.limit,
+        offset: data.offset,
+      }
+
+      return { success: true, data: mapped, error: null, statusCode: 200 }
     } catch (error) {
-      return {
-        success: false,
-        data: null,
-        error: 'An unexpected error occurred',
-        statusCode: 500,
-      }
+      return { success: false, data: null, error: 'Network error - could not connect to server', statusCode: 500 }
     }
   }
 
   /**
-   * Create Task
+   * Create Task (Phase V: with priority, tags, due date, recurrence)
    *
-   * Create new task for authenticated user.
-   * Mocked: Returns mocked task (task-context manages actual tasks).
-   * Future: Will call POST /api/tasks with Authorization header.
+   * Calls POST /api/{userId}/tasks with Authorization header.
    */
-  async createTask(data: TaskFormData): Promise<APIResponse<Task>> {
-    await this.delay()
-
+  async createTask(userId: string, data: TaskFormData): Promise<APIResponse<Task>> {
     try {
-      // Mocked: Return mocked task
-      // In real implementation, this will post to backend
-      const mockedTask: Task = {
-        id: generateUserId(),
+      const body: any = {
         title: data.title,
-        description: data.description || '',
-        completed: false,
-        createdAt: new Date(),
+        description: data.description || null,
+      }
+      if (data.priority) body.priority = data.priority
+      if (data.tags && data.tags.length > 0) body.tags = data.tags
+      if (data.dueDate) body.due_date = data.dueDate
+      if (data.recurrenceRule) body.recurrence_rule = data.recurrenceRule
+
+      const response = await fetch(`${this.baseURL}/api/${userId}/tasks`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      })
+
+      const responseData = await response.json()
+
+      if (!response.ok) {
+        return { success: false, data: null, error: responseData.detail || 'Failed to create task', statusCode: response.status }
       }
 
-      return {
-        success: true,
-        data: mockedTask,
-        error: null,
-        statusCode: 200,
+      const task: Task = {
+        id: responseData.id,
+        title: responseData.title,
+        description: responseData.description || '',
+        completed: responseData.completed,
+        priority: responseData.priority || 'none',
+        tags: responseData.tags || [],
+        dueDate: responseData.due_date || null,
+        isOverdue: responseData.is_overdue || false,
+        recurrenceRule: responseData.recurrence_rule || null,
+        recurrenceGroupId: responseData.recurrence_group_id || null,
+        createdAt: new Date(responseData.created_at),
+        updatedAt: responseData.updated_at ? new Date(responseData.updated_at) : undefined,
       }
+
+      return { success: true, data: task, error: null, statusCode: 201 }
     } catch (error) {
-      return {
-        success: false,
-        data: null,
-        error: 'An unexpected error occurred',
-        statusCode: 500,
-      }
+      return { success: false, data: null, error: 'Network error - could not connect to server', statusCode: 500 }
     }
   }
 
   /**
-   * Update Task
+   * Update Task (Phase V: PATCH with all fields)
    *
-   * Update existing task for authenticated user.
-   * Mocked: Returns mocked task (task-context manages actual tasks).
-   * Future: Will call PATCH /api/tasks/{id} with Authorization header.
+   * Calls PATCH /api/{userId}/tasks/{id} with Authorization header.
    */
   async updateTask(
+    userId: string,
     id: string,
-    data: Partial<TaskFormData>
+    data: Partial<TaskFormData> & { completed?: boolean }
   ): Promise<APIResponse<Task>> {
-    await this.delay()
-
     try {
-      // Mocked: Return mocked task
-      // In real implementation, this will patch to backend
-      const mockedTask: Task = {
-        id,
-        title: data.title || 'Updated Task',
-        description: data.description || '',
-        completed: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+      const body: any = {}
+      if (data.title !== undefined) body.title = data.title
+      if (data.description !== undefined) body.description = data.description
+      if (data.completed !== undefined) body.completed = data.completed
+      if (data.priority !== undefined) body.priority = data.priority
+      if (data.tags !== undefined) body.tags = data.tags
+      if (data.dueDate !== undefined) body.due_date = data.dueDate
+      if (data.recurrenceRule !== undefined) body.recurrence_rule = data.recurrenceRule
+
+      const response = await fetch(`${this.baseURL}/api/${userId}/tasks/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${this.token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      })
+
+      const responseData = await response.json()
+
+      if (!response.ok) {
+        return { success: false, data: null, error: responseData.detail || 'Failed to update task', statusCode: response.status }
       }
 
-      return {
-        success: true,
-        data: mockedTask,
-        error: null,
-        statusCode: 200,
+      const task: Task = {
+        id: responseData.id,
+        title: responseData.title,
+        description: responseData.description || '',
+        completed: responseData.completed,
+        priority: responseData.priority || 'none',
+        tags: responseData.tags || [],
+        dueDate: responseData.due_date || null,
+        isOverdue: responseData.is_overdue || false,
+        recurrenceRule: responseData.recurrence_rule || null,
+        recurrenceGroupId: responseData.recurrence_group_id || null,
+        createdAt: new Date(responseData.created_at),
+        updatedAt: responseData.updated_at ? new Date(responseData.updated_at) : undefined,
       }
+
+      return { success: true, data: task, error: null, statusCode: 200 }
     } catch (error) {
-      return {
-        success: false,
-        data: null,
-        error: 'An unexpected error occurred',
-        statusCode: 500,
-      }
+      return { success: false, data: null, error: 'Network error - could not connect to server', statusCode: 500 }
     }
   }
 
   /**
    * Delete Task
    *
-   * Delete task for authenticated user.
-   * Mocked: Returns success (task-context manages actual tasks).
-   * Future: Will call DELETE /api/tasks/{id} with Authorization header.
+   * Calls DELETE /api/{userId}/tasks/{id} with Authorization header.
    */
-  async deleteTask(id: string): Promise<APIResponse<void>> {
-    await this.delay()
-
+  async deleteTask(userId: string, id: string): Promise<APIResponse<void>> {
     try {
-      // Mocked: Return success
-      // In real implementation, this will delete from backend
-      return {
-        success: true,
-        data: null,
-        error: null,
-        statusCode: 200,
+      const response = await fetch(`${this.baseURL}/api/${userId}/tasks/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${this.token}`,
+        },
+      })
+
+      if (!response.ok && response.status !== 204) {
+        const data = await response.json().catch(() => ({}))
+        return { success: false, data: null, error: data.detail || 'Failed to delete task', statusCode: response.status }
       }
+
+      return { success: true, data: null, error: null, statusCode: 204 }
     } catch (error) {
-      return {
-        success: false,
-        data: null,
-        error: 'An unexpected error occurred',
-        statusCode: 500,
+      return { success: false, data: null, error: 'Network error - could not connect to server', statusCode: 500 }
+    }
+  }
+
+  // ===========================================================================
+  // Phase V: Tags & Reminders
+  // ===========================================================================
+
+  /**
+   * Get Tags - distinct tags for autocomplete
+   */
+  async getTags(userId: string): Promise<APIResponse<string[]>> {
+    try {
+      const response = await fetch(`${this.baseURL}/api/${userId}/tags`, {
+        headers: { 'Authorization': `Bearer ${this.token}` },
+      })
+
+      if (!response.ok) {
+        return { success: false, data: null, error: 'Failed to fetch tags', statusCode: response.status }
       }
+
+      const data = await response.json()
+      return { success: true, data: data.tags || [], error: null, statusCode: 200 }
+    } catch (error) {
+      return { success: false, data: null, error: 'Network error', statusCode: 500 }
+    }
+  }
+
+  /**
+   * Get Reminders for a task
+   */
+  async getReminders(userId: string, taskId: string): Promise<APIResponse<Reminder[]>> {
+    try {
+      const response = await fetch(`${this.baseURL}/api/${userId}/tasks/${taskId}/reminders`, {
+        headers: { 'Authorization': `Bearer ${this.token}` },
+      })
+
+      if (!response.ok) {
+        return { success: false, data: null, error: 'Failed to fetch reminders', statusCode: response.status }
+      }
+
+      const data = await response.json()
+      const reminders: Reminder[] = (data.reminders || []).map((r: any) => ({
+        id: r.id,
+        taskId: r.task_id,
+        userId: r.user_id,
+        triggerAt: r.trigger_at,
+        status: r.status,
+        createdAt: r.created_at,
+      }))
+      return { success: true, data: reminders, error: null, statusCode: 200 }
+    } catch (error) {
+      return { success: false, data: null, error: 'Network error', statusCode: 500 }
+    }
+  }
+
+  /**
+   * Create Reminder (absolute or relative)
+   */
+  async createReminder(
+    userId: string,
+    taskId: string,
+    reminder: { triggerAt?: string; relativeToDue?: string }
+  ): Promise<APIResponse<Reminder>> {
+    try {
+      const body: any = {}
+      if (reminder.triggerAt) body.trigger_at = reminder.triggerAt
+      if (reminder.relativeToDue) body.relative_to_due = reminder.relativeToDue
+
+      const response = await fetch(`${this.baseURL}/api/${userId}/tasks/${taskId}/reminders`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        return { success: false, data: null, error: data.detail || 'Failed to create reminder', statusCode: response.status }
+      }
+
+      const mapped: Reminder = {
+        id: data.id,
+        taskId: data.task_id,
+        userId: data.user_id,
+        triggerAt: data.trigger_at,
+        status: data.status,
+        createdAt: data.created_at,
+      }
+      return { success: true, data: mapped, error: null, statusCode: 201 }
+    } catch (error) {
+      return { success: false, data: null, error: 'Network error', statusCode: 500 }
+    }
+  }
+
+  /**
+   * Delete Reminder
+   */
+  async deleteReminder(userId: string, taskId: string, reminderId: string): Promise<APIResponse<void>> {
+    try {
+      const response = await fetch(
+        `${this.baseURL}/api/${userId}/tasks/${taskId}/reminders/${reminderId}`,
+        {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${this.token}` },
+        },
+      )
+
+      if (!response.ok && response.status !== 204) {
+        return { success: false, data: null, error: 'Failed to delete reminder', statusCode: response.status }
+      }
+
+      return { success: true, data: null, error: null, statusCode: 204 }
+    } catch (error) {
+      return { success: false, data: null, error: 'Network error', statusCode: 500 }
     }
   }
 }

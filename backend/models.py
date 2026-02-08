@@ -4,15 +4,37 @@ Defines the User, Task, Conversation, Message, and ToolCall models.
 
 Phase II: User, Task
 Phase III: Conversation, Message, ToolCall (AI Chatbot)
+Phase V: Task extensions (priority, tags, due_date, recurrence), Reminder
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum
 from typing import Any, Optional
 from uuid import UUID, uuid4
 from sqlmodel import Field, SQLModel, Column, String, Text
 from sqlalchemy import Index
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+
+
+# =============================================================================
+# Phase V: Enums for Advanced Features
+# =============================================================================
+
+
+class TaskPriority(str, Enum):
+    """Priority levels for tasks. Ordinal values used for sorting."""
+    NONE = "none"
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    URGENT = "urgent"
+
+
+class ReminderStatus(str, Enum):
+    """Status lifecycle for task reminders."""
+    PENDING = "pending"
+    TRIGGERED = "triggered"
+    CANCELLED = "cancelled"
 
 
 class User(SQLModel, table=True):
@@ -122,10 +144,50 @@ class Task(SQLModel, table=True):
         description="User ID from Better Auth JWT token"
     )
 
+    # Phase V: New fields
+    priority: str = Field(
+        default=TaskPriority.NONE.value,
+        max_length=10,
+        nullable=False,
+        description="Task priority level (none, low, medium, high, urgent)"
+    )
+
+    tags: list[str] = Field(
+        default_factory=list,
+        sa_column=Column(ARRAY(String), nullable=False, server_default="{}"),
+        description="Task tags/labels as array of strings"
+    )
+
+    due_date: Optional[date] = Field(
+        default=None,
+        nullable=True,
+        description="Task due date (YYYY-MM-DD, no time component)"
+    )
+
+    recurrence_rule: Optional[str] = Field(
+        default=None,
+        max_length=200,
+        nullable=True,
+        description="Simplified RRULE string (e.g., FREQ=DAILY;UNTIL=2026-06-01)"
+    )
+
+    recurrence_group_id: Optional[UUID] = Field(
+        default=None,
+        nullable=True,
+        description="Links recurring task instances in the same chain"
+    )
+
     # Define indexes for performance
     __table_args__ = (
         Index("idx_user_id", "user_id"),
         Index("idx_user_created", "user_id", "created_at"),
+        # Phase V indexes
+        Index("idx_tasks_priority", "priority"),
+        Index("idx_tasks_tags", "tags", postgresql_using="gin"),
+        Index("idx_tasks_due_date", "due_date"),
+        Index("idx_tasks_recurrence_group", "recurrence_group_id"),
+        Index("idx_tasks_user_priority", "user_id", "priority"),
+        Index("idx_tasks_user_due_date", "user_id", "due_date"),
     )
 
     def update_timestamp(self):
@@ -134,6 +196,64 @@ class Task(SQLModel, table=True):
         Call this before saving after modifications.
         """
         self.updated_at = datetime.utcnow()
+
+
+# =============================================================================
+# Phase V: Reminder Model
+# =============================================================================
+
+
+class Reminder(SQLModel, table=True):
+    """
+    Reminder model representing a scheduled reminder for a task.
+
+    Reminders are user-scoped and linked to tasks via foreign key
+    with CASCADE delete. Status lifecycle: pending -> triggered | cancelled.
+    """
+
+    __tablename__ = "reminders"
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        primary_key=True,
+        nullable=False,
+        description="Unique reminder identifier"
+    )
+
+    task_id: UUID = Field(
+        nullable=False,
+        foreign_key="tasks.id",
+        description="Parent task ID (CASCADE delete)"
+    )
+
+    user_id: str = Field(
+        nullable=False,
+        description="User ID for user isolation"
+    )
+
+    trigger_at: datetime = Field(
+        nullable=False,
+        description="When the reminder should fire"
+    )
+
+    status: str = Field(
+        default=ReminderStatus.PENDING.value,
+        max_length=20,
+        nullable=False,
+        description="Reminder status (pending, triggered, cancelled)"
+    )
+
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow,
+        nullable=False,
+        description="Reminder creation timestamp"
+    )
+
+    __table_args__ = (
+        Index("idx_reminders_task_id", "task_id"),
+        Index("idx_reminders_user_id", "user_id"),
+        Index("idx_reminders_trigger_status", "trigger_at", "status"),
+    )
 
 
 # =============================================================================
